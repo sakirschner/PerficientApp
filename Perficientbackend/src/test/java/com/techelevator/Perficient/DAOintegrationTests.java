@@ -17,9 +17,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 
 import com.techelevator.Perficient.daos.JDBCEmployeeDAO;
+import com.techelevator.Perficient.daos.JDBCFieldDAO;
 import com.techelevator.Perficient.daos.JDBCSkillDAO;
 
 import com.techelevator.Perficient.models.Employee;
+import com.techelevator.Perficient.models.Field;
+import com.techelevator.Perficient.models.Skill;
 
 public class DAOintegrationTests {
 	
@@ -27,6 +30,7 @@ public class DAOintegrationTests {
 	private static SingleConnectionDataSource dataSource;
 	private JDBCEmployeeDAO employeeDao;
 	private JDBCSkillDAO skillDao;
+	private JDBCFieldDAO fieldDao;
 	
 	@BeforeClass
 	public static void setupDatasource() {
@@ -46,6 +50,7 @@ public class DAOintegrationTests {
 	public void setup() {
 		employeeDao = new JDBCEmployeeDAO(dataSource);
 		skillDao = new JDBCSkillDAO(dataSource);
+		fieldDao = new JDBCFieldDAO(dataSource);
 	}
 	
 	@After
@@ -53,10 +58,9 @@ public class DAOintegrationTests {
 		dataSource.getConnection().rollback();
 	}
 	
-	private Employee getEmployee(UUID employeeId, String firstName, String lastName,
+	private Employee getEmployee(String firstName, String lastName,
 			String contactEmail, String companyEmail, String birthDate, String hiredDate) {
 		Employee employee = new Employee();
-		employee.setEmployeeId(employeeId);
 		employee.setFirstName(firstName);
 		employee.setLastName(lastName);
 		employee.setContactEmail(contactEmail);
@@ -66,19 +70,50 @@ public class DAOintegrationTests {
 		return employee;
 	}
 	
+	private Skill getSkill(UUID employeeId, UUID fieldId, int experience) {
+		Skill skill = new Skill();
+		skill.setEmployeeId(employeeId);
+		skill.setFieldId(fieldId);
+		skill.setExperience(experience);
+		return skill;
+	}
+	
+	private Field getField(String name, String type) {
+		Field field = new Field();
+		field.setName(name);
+		field.setType(type);
+		return field;
+	}
+	
 	@Test
 	public void test_getAllEmployees_insert_employee_returns_new_employee() {
 		List<Employee> results = employeeDao.getAllEmployees();
 		int startNum = results.size();
-		Employee theEmployee = getEmployee(UUID.fromString("fb436013-e23f-455c-b77f-55f9a4e0e245"),"Scott","Kirschner",
+		Employee theEmployee = getEmployee("Scott","Kirschner",
 			"test@test.com", "test@test.com", "04/14/1991", "04/07/2020");
 		employeeDao.createEmployee(theEmployee);
 		List<Employee> results2 = employeeDao.getAllEmployees();
 		int endNum = results2.size();
-		assertNotNull(results);
-		assertNotNull(results2);
 		assertEquals(startNum + 1, endNum);
 	}
 	
+	@Test
+	public void test_getAllSkillsByEmployeeId_insert_skill_returns_new_skill() {
+		Employee theEmployee = getEmployee("Scott","Kirschner",
+				"test@test.com", "test@test.com", "04/14/1991", "04/07/2020");
+		employeeDao.createEmployee(theEmployee);
+		Employee newEmployee = employeeDao.getNewEmployee();
+		List<Skill> results = skillDao.getAllSkillsByEmployeeId(newEmployee.getEmployeeId());
+		int startNum = results.size();
+		Field theField = getField("Test", "Test");
+		fieldDao.saveField(theField);
+		Field newField = fieldDao.getNewField();
+		Skill theSkill = getSkill(newEmployee.getEmployeeId(), newField.getFieldId(), 12);
+		skillDao.addSkill(theSkill, newEmployee.getEmployeeId(), newField.getFieldId());
+		List<Skill> results2 = skillDao.getAllSkillsByEmployeeId(newEmployee.getEmployeeId());
+		int endNum = results2.size();
+		assertEquals("Test", newField.getName());
+		assertEquals(startNum + 1, endNum);
+	}
 }
 
